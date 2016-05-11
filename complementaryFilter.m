@@ -18,36 +18,57 @@ dt = 1/updateRate;  % s
 hpf = 0.98;
 lpf = 0.02;
 
-% packet | sampleTime | acc_x | acc_y | acc_z | gyr_x | gyr_y | gyr_z
-acc_x = numBackBone(:,3);
-acc_y = numBackBone(:,4);
-acc_z = numBackBone(:,5);
-thetaX_acc = lpf*atan2(acc_z,acc_y);
-thetaY_acc = lpf*atan2(acc_x,acc_z);
-thetaZ_acc = lpf*atan2(acc_y,acc_x);
-% theta_acc = sqrt(thetaX_acc.^2 + thetaY_acc.^2 + thetaZ_acc.^2);
+[~,sheetNames] = xlsfinfo(filename);
+numSheets = length(sheetNames);
+sheet = cell(numSheets,1);
 
-gyr_x = numBackBone(:,6);
-gyr_y = numBackBone(:,7);
-gyr_z = numBackBone(:,8);
-thetaX = zeros(size(gyr_x));
-thetaY = thetaX;
-thetaZ = thetaY;
-for a = 1:length(gyr_x)
-    if a == 1
-        thetaX(a) = hpf*thetaX(a)*dt + lpf*thetaX_acc(a);
-        thetaY(a) = hpf*thetaY(a)*dt + lpf*thetaY_acc(a);
-        thetaZ(a) = hpf*thetaZ(a)*dt + lpf*thetaZ_acc(a);
-    else
-        thetaX(a) = hpf*(thetaX(a-1) + gyr_x(a)*dt) + lpf*thetaX_acc(a);
-        thetaY(a) = hpf*(thetaY(a-1) + gyr_y(a)*dt) + lpf*thetaY_acc(a);
-        thetaZ(a) = hpf*(thetaZ(a-1) + gyr_z(a)*dt) + lpf*thetaZ_acc(a);
+acc_x = cell(size(sheet));
+acc_y = acc_x;
+acc_z = acc_x;
+thetaX_acc = acc_x;
+thetaY_acc = acc_x;
+thetaZ_acc = acc_x;
+gyr_x = acc_x;
+gyr_y = acc_x;
+gyr_z = acc_x;
+thetaX = acc_x;
+thetaY = acc_x;
+thetaZ = acc_x;
+for s = 1:numSheets
+    [sheet{s},~,~] = xlsread(filename,s);
+    updateRate = 60;    % Hz
+    dt = 1/updateRate;  % s
+
+    thisSheet = sheet{s};
+
+    acc_x{s} = thisSheet(:,3);
+    acc_y{s} = thisSheet(:,4);
+    acc_z{s} = thisSheet(:,5);
+    thetaX_acc{s} = lpf*atan2(acc_z{s},acc_y{s});
+    thetaY_acc{s} = lpf*atan2(acc_x{s},acc_z{s});
+    thetaZ_acc{s} = lpf*atan2(acc_y{s},acc_x{s});
+
+    gyr_x{s} = thisSheet(:,6);
+    gyr_y{s} = thisSheet(:,7);
+    gyr_z{s} = thisSheet(:,8);
+    thetaX{s} = zeros(size(gyr_x{s}));
+    thetaY{s} = thetaX{s};
+    thetaZ{s} = thetaY{s};
+    for a = 1:length(gyr_x{s})
+        if a == 1
+            thetaX{s}(a) = hpf*thetaX{s}(a)*dt + thetaX_acc{s}(a);
+            thetaY{s}(a) = hpf*thetaY{s}(a)*dt + thetaY_acc{s}(a);
+            thetaZ{s}(a) = hpf*thetaZ{s}(a)*dt + thetaZ_acc{s}(a);
+        else
+            thetaX{s}(a) = hpf*(thetaX{s}(a-1) + gyr_x{s}(a)*dt) + thetaX_acc{s}(a);
+            thetaY{s}(a) = hpf*(thetaY{s}(a-1) + gyr_y{s}(a)*dt) + thetaY_acc{s}(a);
+            thetaZ{s}(a) = hpf*(thetaZ{s}(a-1) + gyr_z{s}(a)*dt) + thetaZ_acc{s}(a);
+        end
     end
+    figure
+    plot(thetaX{s})
+    hold on
+    plot(thetaY{s})
+    plot(thetaZ{s})
+    legend('X','Y','Z')
 end
-% theta_gyr = sqrt(thetaX_gyr.^2 + thetaY_gyr.^2 + thetaZ_gyr.^2);
-
-plot(thetaX)
-hold on
-plot(thetaY)
-plot(thetaZ)
-legend('X','Y','Z')
